@@ -22,8 +22,41 @@ interface BlockRendererProps {
 export function BlockRenderer({ blocks, editMode = false, reportId, selectedBlockId, onBlockSelect, onBlocksUpdate }: BlockRendererProps) {
   const supabase = createClientComponentClient()
   
-  const handleBlockCreated = (newBlock: Block) => {
-    onBlocksUpdate?.([...blocks, newBlock])
+  const handleBlockCreated = async (newBlock: Block) => {
+    // After creating a block, refetch all blocks to get proper positions
+    if (reportId) {
+      const { data: refreshedBlocks } = await supabase
+        .from('blocks')
+        .select('*')
+        .eq('report_id', reportId)
+        .order('position', { ascending: true })
+      
+      if (refreshedBlocks) {
+        onBlocksUpdate?.(refreshedBlocks)
+      }
+    }
+    
+    // Select and focus the new block after creation
+    setTimeout(() => {
+      onBlockSelect?.(newBlock.id, newBlock.type)
+      // Look for contenteditable element (Tiptap editor) instead of textarea
+      const newBlockElement = document.querySelector(`[data-block-id="${newBlock.id}"]`)
+      if (newBlockElement) {
+        const editorElement = newBlockElement.querySelector('[contenteditable="true"]') as HTMLElement
+        if (editorElement) {
+          editorElement.focus()
+          // Place cursor at the beginning
+          const range = document.createRange()
+          const selection = window.getSelection()
+          if (selection) {
+            range.setStart(editorElement, 0)
+            range.collapse(true)
+            selection.removeAllRanges()
+            selection.addRange(range)
+          }
+        }
+      }
+    }, 200)
   }
 
   const handleBlockDelete = (blockId: string) => {
@@ -99,15 +132,6 @@ export function BlockRenderer({ blocks, editMode = false, reportId, selectedBloc
             return null
         }
       })}
-      {editMode && reportId && (
-        <div className="mt-2">
-          <InlineTextEditor
-            reportId={reportId}
-            onBlockCreated={handleBlockCreated}
-            autoFocus={blocks.length === 0}
-          />
-        </div>
-      )}
     </div>
   )
 } 

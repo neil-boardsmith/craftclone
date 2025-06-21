@@ -39,6 +39,26 @@ export default function NewReportPage() {
       setLoading(false)
       return
     }
+    
+    // Create an initial empty text block for the report
+    const { error: blockError } = await supabase
+      .from('blocks')
+      .insert({
+        report_id: data.id,
+        type: 'text',
+        position: 1,
+        content: {
+          html: '<p></p>',
+          text: '',
+          style: 'paragraph'
+        }
+      })
+    
+    if (blockError) {
+      console.error('Error creating initial block:', blockError)
+      // Continue anyway - user can create blocks manually
+    }
+    
     router.push(`/reports/${data.id}`)
   }
 

@@ -155,3 +155,60 @@
     border-left: 2px solid rgba(100, 116, 139, 0.5);
   }
 }
+
+/* ProseMirror specific styles for our block editor */
+.ProseMirror {
+  outline: none;
+  min-height: 1.5rem;
+}
+
+.ProseMirror > * {
+  margin: 0;
+}
+
+.ProseMirror ul {
+  padding-left: 1.5rem;
+  margin: 0;
+  list-style-type: disc;
+}
+
+.ProseMirror ol {
+  padding-left: 1.5rem;
+  margin: 0;
+  list-style-type: decimal;
+}
+
+.ProseMirror li {
+  margin: 0.125rem 0;
+  display: list-item;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #9ca3af;
+  pointer-events: none;
+  height: 0;
+}
+
+/* Hard break styling */
+.ProseMirror br.ProseMirror-trailingBreak {
+  display: none;
+}
+
+/* Normal line height for paragraphs */
+.ProseMirror p {
+  line-height: 1.6;
+}
+
+/* Style the custom hard break spans */
+.ProseMirror span[data-hard-break="true"] {
+  display: block !important;
+  height: 0.75rem !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.ProseMirror span[data-hard-break="true"] br {
+  display: none;
+}

@@ -234,7 +234,14 @@ export default function ReportEditorClient({ report, blocks: initialBlocks }: { 
         </div>
 
         {/* Center Content Area */}
-        <div className="flex-1 overflow-y-auto bg-white">
+        <div 
+          className="flex-1 overflow-y-auto bg-white"
+          onClick={() => {
+            // Clear selection when clicking on empty space
+            setSelectedBlockId(null)
+            setSelectedBlockType(null)
+          }}
+        >
           <div className="max-w-4xl mx-auto px-16 py-12">
             <div id="top" className="mb-8">
               <h1 className="text-2xl font-medium text-gray-900 mb-2">{report.title}</h1>

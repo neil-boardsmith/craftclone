@@ -1,9 +1,10 @@
 'use client'
 import { TextBlock } from '@/lib/blocks/types'
 import { cn } from '@/lib/utils'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { SlashCommand } from './SlashCommand'
+import { TextBlockEditor } from './TextBlockEditor'
 
 interface TextBlockViewProps {
   block: TextBlock
@@ -17,57 +18,32 @@ interface TextBlockViewProps {
 }
 
 export function TextBlockView({ block, editMode, reportId, isSelected, onSelect, onBlockDelete, onBlockReorder, onBlockCreated }: TextBlockViewProps) {
-  const [content, setContent] = useState(block.content.text || block.content.html?.replace(/<[^>]*>/g, '') || '')
+  const [content, setContent] = useState(block.content.html || '<p></p>')
   const [isDragOver, setIsDragOver] = useState(false)
   const [dragPosition, setDragPosition] = useState<'before' | 'after' | null>(null)
   const [showSlashCommand, setShowSlashCommand] = useState(false)
   const [slashPosition, setSlashPosition] = useState({ x: 0, y: 0 })
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const supabase = createClientComponentClient()
   
   const { style = 'paragraph' } = block.content
 
-  // Auto-resize textarea on mount, content change, and style change
+  // Ensure content is always valid HTML
   useEffect(() => {
-    if (textareaRef.current && editMode) {
-      textareaRef.current.style.height = 'auto'
-      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px'
+    if (!content || content.trim() === '') {
+      setContent('<p></p>')
     }
-  }, [content, editMode, style])
+  }, [])
+
   
-  const handleSave = async (newContent: string) => {
-    if (!reportId || !newContent.trim()) return
+  const handleSave = async (htmlContent: string) => {
+    if (!reportId || !htmlContent) return
     
-    // Wrap in appropriate HTML based on style
-    let htmlContent = ''
-    switch (style) {
-      case 'heading1':
-        htmlContent = `<h1>${newContent}</h1>`
-        break
-      case 'heading2':
-        htmlContent = `<h2>${newContent}</h2>`
-        break
-      case 'heading3':
-        htmlContent = `<h3>${newContent}</h3>`
-        break
-      case 'quote':
-        htmlContent = `<blockquote>${newContent}</blockquote>`
-        break
-      case 'bulletList':
-        htmlContent = `<ul><li>${newContent}</li></ul>`
-        break
-      case 'numberedList':
-        htmlContent = `<ol><li>${newContent}</li></ol>`
-        break
-      case 'strong':
-        htmlContent = `<p><strong>${newContent}</strong></p>`
-        break
-      case 'caption':
-        htmlContent = `<p class="caption">${newContent}</p>`
-        break
-      default:
-        htmlContent = `<p>${newContent}</p>`
-    }
+    // Extract plain text from HTML for the text field
+    const tempDiv = document.createElement('div')
+    tempDiv.innerHTML = htmlContent
+    const plainText = tempDiv.textContent || tempDiv.innerText || ''
+    
+    console.log('Saving HTML:', htmlContent, 'Text:', plainText)
     
     const { error } = await supabase
       .from('blocks')
@@ -75,7 +51,7 @@ export function TextBlockView({ block, editMode, reportId, isSelected, onSelect,
         content: {
           ...block.content,
           html: htmlContent,
-          text: newContent
+          text: plainText
         },
         metadata: {
           ...block.metadata,
@@ -87,8 +63,46 @@ export function TextBlockView({ block, editMode, reportId, isSelected, onSelect,
     if (!error) {
       // Update the block content locally
       block.content.html = htmlContent
-      block.content.text = newContent
+      block.content.text = plainText
     }
+  }
+
+  const updateBlockStyle = async (newStyle: string) => {
+    const updatedContent = { ...block.content, style: newStyle }
+    
+    // Update HTML to match the new style
+    const text = content || ''
+    switch (newStyle) {
+      case 'heading1':
+        updatedContent.html = `<h1>${text}</h1>`
+        break
+      case 'heading2':
+        updatedContent.html = `<h2>${text}</h2>`
+        break
+      case 'heading3':
+        updatedContent.html = `<h3>${text}</h3>`
+        break
+      case 'quote':
+        updatedContent.html = `<blockquote>${text}</blockquote>`
+        break
+      case 'bulletList':
+        const bulletItems = text.split('\n').filter(item => item.trim())
+        updatedContent.html = `<ul>${bulletItems.map(item => `<li>${item}</li>`).join('')}</ul>`
+        break
+      case 'numberedList':
+        const numberedItems = text.split('\n').filter(item => item.trim())
+        updatedContent.html = `<ol>${numberedItems.map(item => `<li>${item}</li>`).join('')}</ol>`
+        break
+      case 'paragraph':
+      default:
+        updatedContent.html = `<p>${text}</p>`
+        break
+    }
+    
+    await supabase
+      .from('blocks')
+      .update({ content: updatedContent })
+      .eq('id', block.id)
   }
 
   const handleDelete = async () => {
@@ -153,7 +167,7 @@ export function TextBlockView({ block, editMode, reportId, isSelected, onSelect,
     setDragPosition(null)
   }
 
-  const createBlock = async (type: string, content: any) => {
+  const createBlock = async (type: string, content: any, focusNew: boolean = true) => {
     try {
       console.log('Creating block:', { type, content, reportId })
       
@@ -173,14 +187,42 @@ export function TextBlockView({ block, editMode, reportId, isSelected, onSelect,
         return
       }
       
-      // Use a smaller number for position (count of existing blocks + 1)
-      const { count } = await supabase
-        .from('blocks')
-        .select('*', { count: 'exact', head: true })
-        .eq('report_id', reportId)
+      // Insert new block after the current block
+      const currentPosition = block.position
+      console.log('Current block position:', currentPosition)
       
-      const position = (count || 0) + 1
-      console.log('Position for new block:', position)
+      // Get all blocks that need position updates
+      const { data: blocksAfter, error: fetchError } = await supabase
+        .from('blocks')
+        .select('id, position')
+        .eq('report_id', reportId)
+        .gt('position', currentPosition)
+        .order('position', { ascending: false })
+      
+      if (fetchError) {
+        console.error('Error fetching blocks:', fetchError)
+      }
+      
+      // Update positions from highest to lowest to avoid conflicts
+      if (blocksAfter && blocksAfter.length > 0) {
+        console.log('Updating positions for', blocksAfter.length, 'blocks')
+        for (const b of blocksAfter) {
+          const { error: updateError } = await supabase
+            .from('blocks')
+            .update({ position: b.position + 1 })
+            .eq('id', b.id)
+          
+          if (updateError) {
+            console.error('Error updating position for block', b.id, updateError)
+          }
+        }
+      }
+      
+      const position = currentPosition + 1
+      console.log('New block will be at position:', position)
+      
+      // Small delay to ensure position updates are committed
+      await new Promise(resolve => setTimeout(resolve, 50))
       
       const blockData = {
         report_id: reportId,
@@ -205,6 +247,19 @@ export function TextBlockView({ block, editMode, reportId, isSelected, onSelect,
       
       console.log('Block created successfully:', data)
       onBlockCreated?.(data)
+      
+      // Focus the new block if requested
+      if (focusNew && data) {
+        setTimeout(() => {
+          const newBlockElement = document.querySelector(`[data-block-id="${data.id}"]`)
+          if (newBlockElement) {
+            const editorElement = newBlockElement.querySelector('[contenteditable="true"]')
+            if (editorElement) {
+              (editorElement as HTMLElement).focus()
+            }
+          }
+        }, 100)
+      }
     } catch (error) {
       console.error('Create block failed:', error)
       alert(`Error: ${error instanceof Error ? error.message : String(error)}`)
@@ -381,6 +436,7 @@ export function TextBlockView({ block, editMode, reportId, isSelected, onSelect,
   if (editMode) {
     return (
       <div
+        data-block-id={block.id}
         className={cn(
           "relative group mb-1 px-3 py-2 -mx-2 rounded transition-all",
           isSelected && "bg-blue-50/40",
@@ -416,90 +472,83 @@ export function TextBlockView({ block, editMode, reportId, isSelected, onSelect,
           </div>
         </div>
         
-        <div className="flex items-start gap-2">
-          {/* List marker */}
-          {style === 'bulletList' && (
-            <span className="text-sm text-gray-700 mt-0.5 select-none">•</span>
-          )}
-          {style === 'numberedList' && (
-            <span className="text-sm text-gray-700 mt-0.5 select-none">1.</span>
-          )}
-          
-          <textarea
-            ref={textareaRef}
+        <div className="relative flex-1">
+          <TextBlockEditor
             value={content}
-            onChange={(e) => {
-              const newValue = e.target.value
-              setContent(newValue)
+            onChange={(htmlContent) => {
+              console.log('Editor onChange:', htmlContent)
+              console.log('HTML structure:', htmlContent.replace(/</g, '\n<'))
+              setContent(htmlContent)
+              handleSave(htmlContent)
               
               // Check for slash command
-              if (newValue.endsWith('/')) {
+              const tempDiv = document.createElement('div')
+              tempDiv.innerHTML = htmlContent
+              const plainText = tempDiv.textContent || ''
+              
+              if (plainText.endsWith('/')) {
                 console.log('Slash detected, showing command menu')
-                const rect = e.target.getBoundingClientRect()
-                setSlashPosition({ x: rect.left, y: rect.bottom })
-                setShowSlashCommand(true)
+                // Get the editor element position
+                const editorElement = document.querySelector('[contenteditable="true"]')
+                if (editorElement) {
+                  const rect = editorElement.getBoundingClientRect()
+                  setSlashPosition({ x: rect.left, y: rect.bottom })
+                  setShowSlashCommand(true)
+                }
               } else {
                 setShowSlashCommand(false)
               }
             }}
-            rows={1}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault()
-              if (style === 'bulletList' || style === 'numberedList') {
-                // Create a new list item
-                handleSave(content)
-                const newListItem = {
-                  html: style === 'bulletList' ? '<ul><li></li></ul>' : '<ol><li></li></ol>',
-                  text: '',
-                  style: style
+            onCreateNewBlock={() => {
+              // Check if we're in a list context
+              const editorElement = document.querySelector(`[data-block-id="${block.id}"] [contenteditable="true"]`)
+              if (editorElement) {
+                const htmlContent = editorElement.innerHTML
+                const isInList = htmlContent.includes('<ul>') || htmlContent.includes('<ol>')
+                
+                if (isInList) {
+                  // Exit list and create paragraph block
+                  createBlock('text', { html: '<p></p>', text: '', style: 'paragraph' })
+                } else {
+                  // Create a new block with the same style
+                  const newStyle = block.content.style || 'paragraph'
+                  let newHtml = '<p></p>'
+                  
+                  switch (newStyle) {
+                    case 'heading1':
+                      newHtml = '<h1></h1>'
+                      break
+                    case 'heading2':
+                      newHtml = '<h2></h2>'
+                      break
+                    case 'heading3':
+                      newHtml = '<h3></h3>'
+                      break
+                    case 'quote':
+                      newHtml = '<blockquote></blockquote>'
+                      break
+                    case 'bulletList':
+                      newHtml = '<ul><li></li></ul>'
+                      break
+                    case 'numberedList':
+                      newHtml = '<ol><li></li></ol>'
+                      break
+                  }
+                  
+                  createBlock('text', { html: newHtml, text: '', style: newStyle })
                 }
-                createBlock('text', newListItem)
-              } else {
-                // Save current block and create a new paragraph block
-                handleSave(content)
-                createBlock('text', {
-                  html: '<p></p>',
-                  text: '',
-                  style: 'paragraph'
-                })
               }
-            } else if (e.key === 'Backspace' && content.trim() === '') {
-              e.preventDefault()
-              handleDelete()
-            } else if (e.key === 'Escape') {
-              setShowSlashCommand(false)
-            }
-          }}
-          onMouseDown={(e) => e.stopPropagation()}
-          onFocus={(e) => {
-            // Disable dragging when focused on input
-            const container = e.target.closest('[draggable]') as HTMLElement
-            if (container) container.draggable = false
-          }}
-          onBlur={(e) => {
-            handleSave(content)
-            // Re-enable dragging when unfocused
-            const container = e.target.closest('[draggable]') as HTMLElement
-            if (container) container.draggable = true
-          }}
-          className={cn(
-            "flex-1 outline-none border-none bg-transparent resize-none overflow-hidden",
-            styleMap[style] || styleMap.paragraph,
-            alignmentMap[block.content.alignment as keyof typeof alignmentMap] || alignmentMap.left
-          )}
-          placeholder="Type something..."
-          style={{
-            minHeight: style === 'heading1' ? '40px' : style === 'heading2' ? '32px' : style === 'heading3' ? '28px' : '24px',
-            lineHeight: 'inherit'
-          }}
-          onInput={(e) => {
-            // Auto-resize textarea
-            const target = e.target as HTMLTextAreaElement
-            target.style.height = 'auto'
-            target.style.height = target.scrollHeight + 'px'
-          }}
-        />
+            }}
+            onDeleteBlock={() => handleDelete()}
+            editable={true}
+            placeholder={style === 'bulletList' || style === 'numberedList' ? "Type list item..." : "Type something..."}
+            autoFocus={false}
+            className={cn(
+              styleMap[style] || styleMap.paragraph,
+              alignmentMap[block.content.alignment as keyof typeof alignmentMap] || alignmentMap.left,
+              (style === 'bulletList' || style === 'numberedList') && "pl-6"
+            )}
+          />
         </div>
         
         {showSlashCommand && (
@@ -508,6 +557,13 @@ export function TextBlockView({ block, editMode, reportId, isSelected, onSelect,
             onClose={() => setShowSlashCommand(false)}
             position={slashPosition}
           />
+        )}
+        
+        {/* Helper text for lists */}
+        {editMode && isSelected && (style === 'bulletList' || style === 'numberedList') && (
+          <div className="absolute -bottom-6 left-0 text-xs text-gray-400">
+            Shift+Enter: new item • Enter: exit list
+          </div>
         )}
       </div>
     )
@@ -552,29 +608,14 @@ export function TextBlockView({ block, editMode, reportId, isSelected, onSelect,
         </div>
       </div>
       
-      {/* Content display with list styling */}
-      {(style === 'bulletList' || style === 'numberedList') ? (
-        <div className="flex items-start gap-2">
-          <span className="text-sm text-gray-700 mt-0.5 select-none">
-            {style === 'bulletList' ? '•' : '1.'}
-          </span>
-          <div 
-            className={cn(
-              styleMap[style] || styleMap.paragraph,
-              alignmentMap[block.content.alignment as keyof typeof alignmentMap] || alignmentMap.left
-            )} 
-            dangerouslySetInnerHTML={{ __html: block.content.text ? `<span>${block.content.text}</span>` : block.content.html }} 
-          />
-        </div>
-      ) : (
-        <div 
-          className={cn(
-            styleMap[style] || styleMap.paragraph,
-            alignmentMap[block.content.alignment as keyof typeof alignmentMap] || alignmentMap.left
-          )} 
-          dangerouslySetInnerHTML={{ __html: block.content.html }} 
-        />
-      )}
+      {/* Content display */}
+      <div 
+        className={cn(
+          styleMap[style] || styleMap.paragraph,
+          alignmentMap[block.content.alignment as keyof typeof alignmentMap] || alignmentMap.left
+        )} 
+        dangerouslySetInnerHTML={{ __html: block.content.html }} 
+      />
       
     </div>
   )

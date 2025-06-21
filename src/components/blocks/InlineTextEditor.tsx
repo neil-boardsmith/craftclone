@@ -7,6 +7,7 @@ import { Extension } from '@tiptap/core'
 import { SlashCommand } from './SlashCommand'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Block } from '@/lib/blocks/types'
+import { cn } from '@/lib/utils'
 
 // Custom extension to handle Enter key
 const EnterKeyExtension = Extension.create({
@@ -41,7 +42,7 @@ interface InlineTextEditorProps {
   autoFocus?: boolean
 }
 
-export function InlineTextEditor({ onBlockCreated, reportId, placeholder = "Type '/' for commands or just start writing...", autoFocus = false }: InlineTextEditorProps) {
+export function InlineTextEditor({ onBlockCreated, reportId, placeholder = "Type something...", autoFocus = false }: InlineTextEditorProps) {
   const [showSlashCommand, setShowSlashCommand] = useState(false)
   const [slashPosition, setSlashPosition] = useState({ x: 0, y: 0 })
   const supabase = createClientComponentClient()
