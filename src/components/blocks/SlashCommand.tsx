@@ -42,9 +42,6 @@ const commandCategories = [
 ]
 
 export function SlashCommand({ onSelectCommand, onClose, position }: SlashCommandProps) {
-  const [selectedCategoryIndex, setSelectedCategoryIndex] = useState(0)
-  const [selectedCommandIndex, setSelectedCommandIndex] = useState(0)
-  const [expandedCategory, setExpandedCategory] = useState<number | null>(null)
 
   // Flatten commands for keyboard navigation
   const allCommands = commandCategories.flatMap(cat => cat.commands)
@@ -82,7 +79,7 @@ export function SlashCommand({ onSelectCommand, onClose, position }: SlashComman
       }}
     >
       <div className="max-h-80 overflow-y-auto">
-        {commandCategories.map((category, categoryIndex) => (
+        {commandCategories.map((category) => (
           <div key={category.title} className="py-1">
             <div className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
               <span className="w-4 h-4 flex items-center justify-center text-xs">{category.icon}</span>
@@ -90,7 +87,7 @@ export function SlashCommand({ onSelectCommand, onClose, position }: SlashComman
             </div>
             {category.commands.map((command) => {
               const isSelected = currentIndex === selectedIndex
-              const buttonIndex = currentIndex++
+              currentIndex++
               
               return (
                 <button

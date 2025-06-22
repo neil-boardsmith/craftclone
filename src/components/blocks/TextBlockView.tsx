@@ -1,5 +1,5 @@
 'use client'
-import { TextBlock } from '@/lib/blocks/types'
+import { TextBlock, Block } from '@/lib/blocks/types'
 import { cn } from '@/lib/utils'
 import { useState, useEffect } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
@@ -14,7 +14,7 @@ interface TextBlockViewProps {
   onSelect?: () => void
   onBlockDelete?: (blockId: string) => void
   onBlockReorder?: (draggedBlockId: string, targetBlockId: string, position: 'before' | 'after') => void
-  onBlockCreated?: (block: any) => void
+  onBlockCreated?: (block: Block) => void
 }
 
 export function TextBlockView({ block, editMode, reportId, isSelected, onSelect, onBlockDelete, onBlockReorder, onBlockCreated }: TextBlockViewProps) {
@@ -32,7 +32,7 @@ export function TextBlockView({ block, editMode, reportId, isSelected, onSelect,
     if (!content || content.trim() === '') {
       setContent('<p></p>')
     }
-  }, [])
+  }, [content])
 
   
   const handleSave = async (htmlContent: string) => {
@@ -67,43 +67,6 @@ export function TextBlockView({ block, editMode, reportId, isSelected, onSelect,
     }
   }
 
-  const updateBlockStyle = async (newStyle: string) => {
-    const updatedContent = { ...block.content, style: newStyle }
-    
-    // Update HTML to match the new style
-    const text = content || ''
-    switch (newStyle) {
-      case 'heading1':
-        updatedContent.html = `<h1>${text}</h1>`
-        break
-      case 'heading2':
-        updatedContent.html = `<h2>${text}</h2>`
-        break
-      case 'heading3':
-        updatedContent.html = `<h3>${text}</h3>`
-        break
-      case 'quote':
-        updatedContent.html = `<blockquote>${text}</blockquote>`
-        break
-      case 'bulletList':
-        const bulletItems = text.split('\n').filter(item => item.trim())
-        updatedContent.html = `<ul>${bulletItems.map(item => `<li>${item}</li>`).join('')}</ul>`
-        break
-      case 'numberedList':
-        const numberedItems = text.split('\n').filter(item => item.trim())
-        updatedContent.html = `<ol>${numberedItems.map(item => `<li>${item}</li>`).join('')}</ol>`
-        break
-      case 'paragraph':
-      default:
-        updatedContent.html = `<p>${text}</p>`
-        break
-    }
-    
-    await supabase
-      .from('blocks')
-      .update({ content: updatedContent })
-      .eq('id', block.id)
-  }
 
   const handleDelete = async () => {
     if (!reportId) return
@@ -167,7 +130,7 @@ export function TextBlockView({ block, editMode, reportId, isSelected, onSelect,
     setDragPosition(null)
   }
 
-  const createBlock = async (type: string, content: any, focusNew: boolean = true) => {
+  const createBlock = async (type: string, content: Record<string, unknown>, focusNew: boolean = true) => {
     try {
       console.log('Creating block:', { type, content, reportId })
       

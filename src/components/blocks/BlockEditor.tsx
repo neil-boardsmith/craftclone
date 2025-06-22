@@ -1,5 +1,5 @@
 'use client'
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import { TextBlockEditor } from './TextBlockEditor'
 import { SlashCommand } from './SlashCommand'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
@@ -18,7 +18,6 @@ export function BlockEditor({ reportId, onBlockCreated, initialContent = '', pla
   const [showSlashCommand, setShowSlashCommand] = useState(false)
   const [slashPosition, setSlashPosition] = useState({ x: 0, y: 0 })
   const [isCreating, setIsCreating] = useState(false)
-  const editorRef = useRef<HTMLDivElement>(null)
   const supabase = createClientComponentClient()
 
   const handleContentChange = (html: string) => {
@@ -38,7 +37,7 @@ export function BlockEditor({ reportId, onBlockCreated, initialContent = '', pla
     }
   }
 
-  const createBlock = async (type: string, blockContent: any) => {
+  const createBlock = async (type: string, blockContent: Record<string, unknown>) => {
     if (!reportId || isCreating) return
     
     setIsCreating(true)
@@ -164,7 +163,7 @@ export function BlockEditor({ reportId, onBlockCreated, initialContent = '', pla
   }
 
   return (
-    <div className="relative" ref={editorRef}>
+    <div className="relative">
       <TextBlockEditor
         value={content}
         onChange={handleContentChange}

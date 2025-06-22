@@ -10,7 +10,7 @@ interface EmbedBlockViewProps {
   onSelect?: () => void
 }
 
-export function EmbedBlockView({ block, editMode, reportId, isSelected, onSelect }: EmbedBlockViewProps) {
+export function EmbedBlockView({ block, isSelected, onSelect }: EmbedBlockViewProps) {
   const { url, embedType, title } = block.content
   
   return (

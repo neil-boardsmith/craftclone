@@ -5,7 +5,7 @@ export interface BaseBlock {
   reportId: string
   type: BlockType
   position: number
-  content: Record<string, any> & {
+  content: Record<string, unknown> & {
     decoration?: 'focus' | 'card'
     backgroundColor?: string
   }
@@ -20,7 +20,10 @@ export interface TextBlock extends BaseBlock {
   content: {
     html: string
     text: string // for AI processing
-    style?: 'paragraph' | 'heading1' | 'heading2' | 'heading3' | 'quote'
+    style?: 'paragraph' | 'heading1' | 'heading2' | 'heading3' | 'quote' | 'strong' | 'caption' | 'bulletList' | 'numberedList'
+    alignment?: 'left' | 'center' | 'right'
+    decoration?: 'focus' | 'card'
+    backgroundColor?: string
   }
 }
 

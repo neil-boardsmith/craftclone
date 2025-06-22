@@ -16,7 +16,7 @@ interface TableBlockViewProps {
 }
 
 // Helper functions for column type detection and formatting
-const detectColumnType = (values: any[]): 'text' | 'number' | 'currency' | 'percentage' => {
+const detectColumnType = (values: (string | number)[]): 'text' | 'number' | 'currency' | 'percentage' => {
   const nonEmptyValues = values.filter(v => v !== null && v !== undefined && v !== '')
   if (nonEmptyValues.length === 0) return 'text'
   
@@ -53,7 +53,7 @@ const detectColumnType = (values: any[]): 'text' | 'number' | 'currency' | 'perc
   return 'number'
 }
 
-const formatCellValue = (value: any, type: 'text' | 'number' | 'currency' | 'percentage'): string => {
+const formatCellValue = (value: string | number | null | undefined, type: 'text' | 'number' | 'currency' | 'percentage'): string => {
   if (value === null || value === undefined || value === '') return ''
   
   const strValue = String(value).trim()
@@ -102,7 +102,7 @@ const parseInputValue = (value: string, type: 'text' | 'number' | 'currency' | '
   }
 }
 
-export function TableBlockView({ block, editMode, reportId, isSelected, onSelect, onBlockDelete, onBlockReorder }: TableBlockViewProps) {
+export function TableBlockView({ block, editMode, reportId, isSelected, onSelect }: TableBlockViewProps) {
   const { headers, rows, formatting } = block.content
   const [editingCell, setEditingCell] = useState<{row: number, col: number} | null>(null)
   const [tableData, setTableData] = useState({ headers, rows, formatting })
@@ -125,7 +125,7 @@ export function TableBlockView({ block, editMode, reportId, isSelected, onSelect
     setColumnTypes(newColumnTypes)
   }, [tableData.rows, tableData.headers, editMode])
 
-  const updateTable = async (newHeaders: string[], newRows: any[][], newColumnTypes?: ('text' | 'number' | 'currency' | 'percentage')[]) => {
+  const updateTable = async (newHeaders: string[], newRows: (string | number)[][], newColumnTypes?: ('text' | 'number' | 'currency' | 'percentage')[]) => {
     if (!reportId) return
 
     const typesToSave = newColumnTypes || columnTypes
@@ -180,7 +180,7 @@ export function TableBlockView({ block, editMode, reportId, isSelected, onSelect
     updateTable(tableData.headers, tableData.rows, newColumnTypes)
   }
 
-  const parseCSV = (text: string): { headers: string[], rows: any[][] } => {
+  const parseCSV = (text: string): { headers: string[], rows: string[][] } => {
     const lines = text.trim().split('\n')
     if (lines.length === 0) return { headers: [], rows: [] }
     
@@ -292,7 +292,7 @@ export function TableBlockView({ block, editMode, reportId, isSelected, onSelect
   const addColumn = () => {
     const newHeaders = [...tableData.headers, `Column ${tableData.headers.length + 1}`]
     const newRows = tableData.rows.map(row => [...row, ''])
-    const newColumnTypes = [...columnTypes, 'text']
+    const newColumnTypes: ('text' | 'number' | 'currency' | 'percentage')[] = [...columnTypes, 'text']
     setTableData({ headers: newHeaders, rows: newRows, formatting: tableData.formatting })
     setColumnTypes(newColumnTypes)
     updateTable(newHeaders, newRows, newColumnTypes)
@@ -388,7 +388,7 @@ export function TableBlockView({ block, editMode, reportId, isSelected, onSelect
               </tr>
             </thead>
             <tbody>
-              {tableData.rows.map((row: any[], i: number) => (
+              {tableData.rows.map((row: (string | number)[], i: number) => (
                 <tr key={i}>
                   {row.map((cell, j) => {
                     const type = columnTypes[j]
@@ -479,7 +479,7 @@ export function TableBlockView({ block, editMode, reportId, isSelected, onSelect
             </tr>
           </thead>
           <tbody>
-            {rows.map((row: any[], i: number) => (
+            {rows.map((row: (string | number)[], i: number) => (
               <tr key={i}>
                 {row.map((cell, j) => {
                   const type = formatting?.columnTypes?.[j] || 'text'

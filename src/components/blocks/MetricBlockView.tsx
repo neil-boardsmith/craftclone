@@ -10,7 +10,7 @@ interface MetricBlockViewProps {
   onSelect?: () => void
 }
 
-export function MetricBlockView({ block, editMode, reportId, isSelected, onSelect }: MetricBlockViewProps) {
+export function MetricBlockView({ block, isSelected, onSelect }: MetricBlockViewProps) {
   const { metrics, columns = 4, style = 'card', backgroundColor = 'teal' } = block.content
   
   const colorClasses = {

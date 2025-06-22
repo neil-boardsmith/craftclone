@@ -1,14 +1,11 @@
-import { useState } from 'react'
-import { Block } from '@/lib/blocks/types'
+import { Block, TextBlock, TableBlock, ChartBlock, EmbedBlock, ImageBlock, MetricBlock } from '@/lib/blocks/types'
 import { TextBlockView } from './TextBlockView'
 import { TableBlockView } from './TableBlockView'
 import { ChartBlockView } from './ChartBlockView'
 import { EmbedBlockView } from './EmbedBlockView'
 import { ImageBlockView } from './ImageBlockView'
 import { MetricBlockView } from './MetricBlockView'
-import { Button } from '@/components/ui/button'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { InlineTextEditor } from './InlineTextEditor'
 
 interface BlockRendererProps {
   blocks: Block[]
@@ -117,17 +114,17 @@ export function BlockRenderer({ blocks, editMode = false, reportId, selectedBloc
         
         switch (block.type) {
           case 'text':
-            return <TextBlockView key={block.id} {...commonProps} />
+            return <TextBlockView key={block.id} {...commonProps} block={block as TextBlock} />
           case 'table':
-            return <TableBlockView key={block.id} {...commonProps} />
+            return <TableBlockView key={block.id} {...commonProps} block={block as TableBlock} />
           case 'chart':
-            return <ChartBlockView key={block.id} {...commonProps} />
+            return <ChartBlockView key={block.id} {...commonProps} block={block as ChartBlock} />
           case 'embed':
-            return <EmbedBlockView key={block.id} {...commonProps} />
+            return <EmbedBlockView key={block.id} {...commonProps} block={block as EmbedBlock} />
           case 'image':
-            return <ImageBlockView key={block.id} {...commonProps} />
+            return <ImageBlockView key={block.id} {...commonProps} block={block as ImageBlock} />
           case 'metric':
-            return <MetricBlockView key={block.id} {...commonProps} />
+            return <MetricBlockView key={block.id} {...commonProps} block={block as MetricBlock} />
           default:
             return null
         }

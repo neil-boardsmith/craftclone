@@ -1,8 +1,6 @@
 'use client'
 
 import { ReactNode } from 'react'
-import Link from 'next/link'
-import { UserMenu } from './UserMenu'
 
 interface MainLayoutProps {
   children: ReactNode

@@ -10,7 +10,7 @@ interface ChartBlockViewProps {
   onSelect?: () => void
 }
 
-export function ChartBlockView({ block, editMode, reportId, isSelected, onSelect }: ChartBlockViewProps) {
+export function ChartBlockView({ block, isSelected, onSelect }: ChartBlockViewProps) {
   // Placeholder: You can implement Recharts or another chart library here
   return (
     <div

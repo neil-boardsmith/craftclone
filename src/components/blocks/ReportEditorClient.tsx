@@ -2,16 +2,22 @@
 import { useState, useEffect } from 'react'
 import { MainLayout } from '@/components/layout/main-layout'
 import { BlockRenderer } from './BlockRenderer'
-import { Button } from '@/components/ui/button'
-import { Block } from '@/lib/blocks/types'
+import { Block, TextBlock } from '@/lib/blocks/types'
 import { cn } from '@/lib/utils'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Menu, X, ChevronLeft } from 'lucide-react'
+import Link from 'next/link'
 
-export default function ReportEditorClient({ report, blocks: initialBlocks }: { report: any, blocks: Block[] }) {
+interface Report {
+  id: string;
+  title: string;
+  description?: string;
+  created_at: string;
+}
+
+export default function ReportEditorClient({ report, blocks: initialBlocks }: { report: Report, blocks: Block[] }) {
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null)
-  const [selectedBlockType, setSelectedBlockType] = useState<string | null>(null)
   const [blocks, setBlocks] = useState<Block[]>(initialBlocks)
   const [mounted, setMounted] = useState(false)
   const [showMobileSidebar, setShowMobileSidebar] = useState(false)
@@ -23,9 +29,8 @@ export default function ReportEditorClient({ report, blocks: initialBlocks }: { 
     setMounted(true)
   }, [])
 
-  const handleBlockSelect = (blockId: string, blockType: string) => {
+  const handleBlockSelect = (blockId: string) => {
     setSelectedBlockId(blockId)
-    setSelectedBlockType(blockType)
   }
 
   const handleDeleteReport = async () => {
@@ -61,13 +66,13 @@ export default function ReportEditorClient({ report, blocks: initialBlocks }: { 
     }
   }
 
-  const updateBlockStyle = async (property: string, value: any) => {
+  const updateBlockStyle = async (property: string, value: string | null) => {
     if (!selectedBlockId) return
     
-    const block = blocks.find(b => b.id === selectedBlockId)
+    const block = selectedBlock
     if (!block) return
 
-    let updatedContent = { ...block.content }
+    const updatedContent: Record<string, unknown> = { ...block.content }
     
     if (property === 'textStyle') {
       // For text blocks, update the style property
@@ -90,7 +95,7 @@ export default function ReportEditorClient({ report, blocks: initialBlocks }: { 
       // Update local state
       setBlocks(blocks.map(b => 
         b.id === selectedBlockId 
-          ? { ...b, content: updatedContent }
+          ? { ...b, content: updatedContent } as Block
           : b
       ))
     }
@@ -98,9 +103,9 @@ export default function ReportEditorClient({ report, blocks: initialBlocks }: { 
 
   // Extract table of contents from blocks with headings
   const tableOfContents = blocks
-    .filter((block) => {
+    .filter((block): block is TextBlock => {
       if (block.type !== 'text') return false
-      const style = block.content.style
+      const style = (block as TextBlock).content.style
       return style === 'heading1' || style === 'heading2' || style === 'heading3'
     })
     .map((block) => {
@@ -120,6 +125,9 @@ export default function ReportEditorClient({ report, blocks: initialBlocks }: { 
       }
     })
 
+  const selectedBlock = blocks.find(b => b.id === selectedBlockId)
+  const selectedTextBlock = selectedBlock?.type === 'text' ? selectedBlock as TextBlock : null
+  
   const renderFormatOptions = () => (
     <div className="space-y-4">
       {/* Titles Section */}
@@ -129,7 +137,7 @@ export default function ReportEditorClient({ report, blocks: initialBlocks }: { 
           <button 
             className={cn(
               "p-1.5 text-xs bg-white border border-gray-200 rounded hover:bg-gray-50",
-              blocks.find(b => b.id === selectedBlockId)?.content?.style === 'heading1' && "bg-blue-100 border-blue-200"
+              selectedTextBlock?.content?.style === 'heading1' && "bg-blue-100 border-blue-200"
             )}
             onClick={() => updateBlockStyle('textStyle', 'heading1')}
           >
@@ -138,7 +146,7 @@ export default function ReportEditorClient({ report, blocks: initialBlocks }: { 
           <button 
             className={cn(
               "p-1.5 text-xs bg-white border border-gray-200 rounded hover:bg-gray-50",
-              blocks.find(b => b.id === selectedBlockId)?.content?.style === 'heading2' && "bg-blue-100 border-blue-200"
+              selectedTextBlock?.content?.style === 'heading2' && "bg-blue-100 border-blue-200"
             )}
             onClick={() => updateBlockStyle('textStyle', 'heading2')}
           >
@@ -147,7 +155,7 @@ export default function ReportEditorClient({ report, blocks: initialBlocks }: { 
           <button 
             className={cn(
               "p-1.5 text-xs bg-white border border-gray-200 rounded hover:bg-gray-50",
-              blocks.find(b => b.id === selectedBlockId)?.content?.style === 'heading3' && "bg-blue-100 border-blue-200"
+              selectedTextBlock?.content?.style === 'heading3' && "bg-blue-100 border-blue-200"
             )}
             onClick={() => updateBlockStyle('textStyle', 'heading3')}
           >
@@ -163,7 +171,7 @@ export default function ReportEditorClient({ report, blocks: initialBlocks }: { 
           <button 
             className={cn(
               "p-1.5 text-xs bg-white border border-gray-200 rounded hover:bg-gray-50",
-              blocks.find(b => b.id === selectedBlockId)?.content?.style === 'strong' && "bg-blue-100 border-blue-200"
+              selectedTextBlock?.content?.style === 'strong' && "bg-blue-100 border-blue-200"
             )}
             onClick={() => updateBlockStyle('textStyle', 'strong')}
           >
@@ -172,7 +180,7 @@ export default function ReportEditorClient({ report, blocks: initialBlocks }: { 
           <button 
             className={cn(
               "p-1.5 text-xs bg-white border border-gray-200 rounded hover:bg-gray-50",
-              blocks.find(b => b.id === selectedBlockId)?.content?.style === 'paragraph' && "bg-blue-100 border-blue-200"
+              selectedTextBlock?.content?.style === 'paragraph' && "bg-blue-100 border-blue-200"
             )}
             onClick={() => updateBlockStyle('textStyle', 'paragraph')}
           >
@@ -181,7 +189,7 @@ export default function ReportEditorClient({ report, blocks: initialBlocks }: { 
           <button 
             className={cn(
               "p-1.5 text-xs bg-white border border-gray-200 rounded hover:bg-gray-50",
-              blocks.find(b => b.id === selectedBlockId)?.content?.style === 'caption' && "bg-blue-100 border-blue-200"
+              selectedTextBlock?.content?.style === 'caption' && "bg-blue-100 border-blue-200"
             )}
             onClick={() => updateBlockStyle('textStyle', 'caption')}
           >
@@ -197,7 +205,7 @@ export default function ReportEditorClient({ report, blocks: initialBlocks }: { 
           <button 
             className={cn(
               "p-1.5 text-xs bg-white border border-gray-200 rounded hover:bg-gray-50 flex items-center",
-              blocks.find(b => b.id === selectedBlockId)?.content?.style === 'bulletList' && "bg-blue-100 border-blue-200"
+              selectedTextBlock?.content?.style === 'bulletList' && "bg-blue-100 border-blue-200"
             )}
             onClick={() => updateBlockStyle('textStyle', 'bulletList')}
           >
@@ -206,7 +214,7 @@ export default function ReportEditorClient({ report, blocks: initialBlocks }: { 
           <button 
             className={cn(
               "p-1.5 text-xs bg-white border border-gray-200 rounded hover:bg-gray-50 flex items-center",
-              blocks.find(b => b.id === selectedBlockId)?.content?.style === 'numberedList' && "bg-blue-100 border-blue-200"
+              selectedTextBlock?.content?.style === 'numberedList' && "bg-blue-100 border-blue-200"
             )}
             onClick={() => updateBlockStyle('textStyle', 'numberedList')}
           >
@@ -215,11 +223,11 @@ export default function ReportEditorClient({ report, blocks: initialBlocks }: { 
           <button 
             className={cn(
               "col-span-2 p-1.5 text-xs bg-white border border-gray-200 rounded hover:bg-gray-50 flex items-center justify-center",
-              blocks.find(b => b.id === selectedBlockId)?.content?.style === 'quote' && "bg-blue-100 border-blue-200"
+              selectedTextBlock?.content?.style === 'quote' && "bg-blue-100 border-blue-200"
             )}
             onClick={() => updateBlockStyle('textStyle', 'quote')}
           >
-            <span className="mr-1 text-lg leading-none">"</span> Quote
+            <span className="mr-1 text-lg leading-none">&quot;</span> Quote
           </button>
         </div>
       </div>
@@ -231,7 +239,7 @@ export default function ReportEditorClient({ report, blocks: initialBlocks }: { 
           <button 
             className={cn(
               "p-2 text-xs bg-white border border-gray-200 rounded hover:bg-gray-50",
-              blocks.find(b => b.id === selectedBlockId)?.content?.alignment === 'left' && "bg-blue-100 border-blue-200"
+              selectedTextBlock?.content?.alignment === 'left' && "bg-blue-100 border-blue-200"
             )}
             onClick={() => updateBlockStyle('alignment', 'left')}
           >
@@ -240,7 +248,7 @@ export default function ReportEditorClient({ report, blocks: initialBlocks }: { 
           <button 
             className={cn(
               "p-2 text-xs bg-white border border-gray-200 rounded hover:bg-gray-50",
-              blocks.find(b => b.id === selectedBlockId)?.content?.alignment === 'center' && "bg-blue-100 border-blue-200"
+              selectedTextBlock?.content?.alignment === 'center' && "bg-blue-100 border-blue-200"
             )}
             onClick={() => updateBlockStyle('alignment', 'center')}
           >
@@ -249,7 +257,7 @@ export default function ReportEditorClient({ report, blocks: initialBlocks }: { 
           <button 
             className={cn(
               "p-2 text-xs bg-white border border-gray-200 rounded hover:bg-gray-50",
-              blocks.find(b => b.id === selectedBlockId)?.content?.alignment === 'right' && "bg-blue-100 border-blue-200"
+              selectedTextBlock?.content?.alignment === 'right' && "bg-blue-100 border-blue-200"
             )}
             onClick={() => updateBlockStyle('alignment', 'right')}
           >
@@ -265,7 +273,7 @@ export default function ReportEditorClient({ report, blocks: initialBlocks }: { 
           <button 
             className={cn(
               "p-2 text-xs bg-white border border-gray-200 rounded hover:bg-gray-50 flex items-center justify-center",
-              !blocks.find(b => b.id === selectedBlockId)?.content?.decoration && "bg-blue-100 border-blue-200"
+              !selectedTextBlock?.content?.decoration && "bg-blue-100 border-blue-200"
             )}
             onClick={() => updateBlockStyle('decoration', null)}
           >
@@ -274,10 +282,10 @@ export default function ReportEditorClient({ report, blocks: initialBlocks }: { 
           <button 
             className={cn(
               "p-2 text-xs bg-white border border-gray-200 rounded hover:bg-gray-50 flex items-center justify-center",
-              blocks.find(b => b.id === selectedBlockId)?.content?.decoration === 'card' && "bg-blue-100 border-blue-200"
+              selectedTextBlock?.content?.decoration === 'card' && "bg-blue-100 border-blue-200"
             )}
             onClick={() => {
-              const current = blocks.find(b => b.id === selectedBlockId)?.content?.decoration
+              const current = selectedTextBlock?.content?.decoration
               updateBlockStyle('decoration', current === 'card' ? null : 'card')
             }}
           >
@@ -293,10 +301,10 @@ export default function ReportEditorClient({ report, blocks: initialBlocks }: { 
           <button 
             className={cn(
               "p-2 text-xs bg-white border border-gray-200 rounded hover:bg-gray-50 flex items-center justify-center",
-              blocks.find(b => b.id === selectedBlockId)?.content?.decoration === 'focus' && "bg-blue-100 border-blue-200"
+              selectedTextBlock?.content?.decoration === 'focus' && "bg-blue-100 border-blue-200"
             )}
             onClick={() => {
-              const current = blocks.find(b => b.id === selectedBlockId)?.content?.decoration
+              const current = selectedTextBlock?.content?.decoration
               updateBlockStyle('decoration', current === 'focus' ? null : 'focus')
             }}
           >
@@ -305,10 +313,10 @@ export default function ReportEditorClient({ report, blocks: initialBlocks }: { 
           <button 
             className={cn(
               "p-2 text-xs bg-white border border-gray-200 rounded hover:bg-gray-50 flex items-center justify-center",
-              blocks.find(b => b.id === selectedBlockId)?.content?.decoration === 'card' && "bg-blue-100 border-blue-200"
+              selectedTextBlock?.content?.decoration === 'card' && "bg-blue-100 border-blue-200"
             )}
             onClick={() => {
-              const current = blocks.find(b => b.id === selectedBlockId)?.content?.decoration
+              const current = selectedTextBlock?.content?.decoration
               updateBlockStyle('decoration', current === 'card' ? null : 'card')
             }}
           >
@@ -325,7 +333,7 @@ export default function ReportEditorClient({ report, blocks: initialBlocks }: { 
           <button
             className={cn(
               "w-6 h-6 rounded-full border-2 border-gray-300 hover:border-gray-400 transition-all flex items-center justify-center",
-              !blocks.find(b => b.id === selectedBlockId)?.content?.backgroundColor && "ring-1 ring-blue-500"
+              !selectedTextBlock?.content?.backgroundColor && "ring-1 ring-blue-500"
             )}
             onClick={() => updateBlockStyle('backgroundColor', null)}
             title="No color"
@@ -353,7 +361,7 @@ export default function ReportEditorClient({ report, blocks: initialBlocks }: { 
               className={cn(
                 "w-6 h-6 rounded-full hover:ring-1 transition-all",
                 color.class,
-                blocks.find(b => b.id === selectedBlockId)?.content?.backgroundColor === color.name && "ring-1"
+                selectedTextBlock?.content?.backgroundColor === color.name && "ring-1"
               )}
               onClick={() => updateBlockStyle('backgroundColor', color.name)}
             />
@@ -422,13 +430,13 @@ export default function ReportEditorClient({ report, blocks: initialBlocks }: { 
 
           {/* Back button */}
           <div className="p-4 border-b border-gray-200">
-            <a
+            <Link
               href="/reports"
               className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
               Back to Reports
-            </a>
+            </Link>
           </div>
           
           {/* Report info */}
@@ -498,8 +506,7 @@ export default function ReportEditorClient({ report, blocks: initialBlocks }: { 
           onClick={() => {
             // Clear selection when clicking on empty space
             setSelectedBlockId(null)
-            setSelectedBlockType(null)
-          }}
+            }}
         >
           <div className="max-w-4xl mx-auto px-4 sm:px-8 lg:px-16 py-8 lg:py-12">
             <div id="top" className="mb-8 hidden lg:block">
@@ -513,7 +520,7 @@ export default function ReportEditorClient({ report, blocks: initialBlocks }: { 
               editMode={editMode} 
               reportId={report.id}
               selectedBlockId={selectedBlockId}
-              onBlockSelect={handleBlockSelect}
+              onBlockSelect={(blockId) => handleBlockSelect(blockId)}
               onBlocksUpdate={setBlocks}
             />
           </div>
@@ -555,7 +562,7 @@ export default function ReportEditorClient({ report, blocks: initialBlocks }: { 
                       <button 
                         className={cn(
                           "p-1.5 text-xs bg-white border border-gray-200 rounded hover:bg-gray-50",
-                          blocks.find(b => b.id === selectedBlockId)?.content?.style === 'heading1' && "bg-blue-100 border-blue-200"
+                          selectedTextBlock?.content?.style === 'heading1' && "bg-blue-100 border-blue-200"
                         )}
                         onClick={() => updateBlockStyle('textStyle', 'heading1')}
                       >
@@ -564,7 +571,7 @@ export default function ReportEditorClient({ report, blocks: initialBlocks }: { 
                       <button 
                         className={cn(
                           "p-1.5 text-xs bg-white border border-gray-200 rounded hover:bg-gray-50",
-                          blocks.find(b => b.id === selectedBlockId)?.content?.style === 'heading2' && "bg-blue-100 border-blue-200"
+                          selectedTextBlock?.content?.style === 'heading2' && "bg-blue-100 border-blue-200"
                         )}
                         onClick={() => updateBlockStyle('textStyle', 'heading2')}
                       >
@@ -573,7 +580,7 @@ export default function ReportEditorClient({ report, blocks: initialBlocks }: { 
                       <button 
                         className={cn(
                           "p-1.5 text-xs bg-white border border-gray-200 rounded hover:bg-gray-50",
-                          blocks.find(b => b.id === selectedBlockId)?.content?.style === 'heading3' && "bg-blue-100 border-blue-200"
+                          selectedTextBlock?.content?.style === 'heading3' && "bg-blue-100 border-blue-200"
                         )}
                         onClick={() => updateBlockStyle('textStyle', 'heading3')}
                       >
@@ -590,7 +597,7 @@ export default function ReportEditorClient({ report, blocks: initialBlocks }: { 
                       <button 
                         className={cn(
                           "p-1.5 text-xs bg-white border border-gray-200 rounded hover:bg-gray-50",
-                          blocks.find(b => b.id === selectedBlockId)?.content?.style === 'strong' && "bg-blue-100 border-blue-200"
+                          selectedTextBlock?.content?.style === 'strong' && "bg-blue-100 border-blue-200"
                         )}
                         onClick={() => updateBlockStyle('textStyle', 'strong')}
                       >
@@ -599,7 +606,7 @@ export default function ReportEditorClient({ report, blocks: initialBlocks }: { 
                       <button 
                         className={cn(
                           "p-1.5 text-xs bg-white border border-gray-200 rounded hover:bg-gray-50",
-                          blocks.find(b => b.id === selectedBlockId)?.content?.style === 'paragraph' && "bg-blue-100 border-blue-200"
+                          selectedTextBlock?.content?.style === 'paragraph' && "bg-blue-100 border-blue-200"
                         )}
                         onClick={() => updateBlockStyle('textStyle', 'paragraph')}
                       >
@@ -608,7 +615,7 @@ export default function ReportEditorClient({ report, blocks: initialBlocks }: { 
                       <button 
                         className={cn(
                           "p-1.5 text-xs bg-white border border-gray-200 rounded hover:bg-gray-50",
-                          blocks.find(b => b.id === selectedBlockId)?.content?.style === 'caption' && "bg-blue-100 border-blue-200"
+                          selectedTextBlock?.content?.style === 'caption' && "bg-blue-100 border-blue-200"
                         )}
                         onClick={() => updateBlockStyle('textStyle', 'caption')}
                       >

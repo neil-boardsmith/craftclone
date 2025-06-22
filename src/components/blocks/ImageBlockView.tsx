@@ -10,7 +10,7 @@ interface ImageBlockViewProps {
   onSelect?: () => void
 }
 
-export function ImageBlockView({ block, editMode, reportId, isSelected, onSelect }: ImageBlockViewProps) {
+export function ImageBlockView({ block, isSelected, onSelect }: ImageBlockViewProps) {
   const { url, alt, caption, alignment } = block.content
   const alignClass = {
     left: 'mx-0',
@@ -29,6 +29,7 @@ export function ImageBlockView({ block, editMode, reportId, isSelected, onSelect
       onClick={onSelect}
     >
       <figure className={`my-4 ${alignClass}`}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={url} alt={alt} className="rounded-lg max-w-full shadow-sm" />
         {caption && (
           <figcaption className="text-center text-slate-500 text-sm mt-2">

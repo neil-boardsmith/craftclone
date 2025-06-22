@@ -35,7 +35,7 @@ const CustomHardBreak = Node.create({
   
   addCommands() {
     return {
-      setHardBreak: () => ({ commands, chain, state, editor }) => {
+      setHardBreak: () => ({ commands }) => {
         return commands.first([
           () => commands.exitCode(),
           () => commands.insertContent({ type: this.name }),
@@ -197,7 +197,7 @@ export function TextBlockEditor({
     if (editor && value && value !== editor.getHTML()) {
       editor.commands.setContent(value, false)
     }
-  }, [value])
+  }, [value, editor])
 
   // Update editable state
   useEffect(() => {
